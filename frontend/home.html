@@ -1,4 +1,385 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHIS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Your existing CSS remains the same */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      animation: fadeIn 0.6s ease-out;
+      transition: transform 0.3s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-5px);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #86b4ff 0%, #505f54  100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+      animation: pulse 8s infinite linear;
+    }
+
+    .logo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .logo-icon {
+      font-size: 150px, 24px;
+      margin-right: 10px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+      font-weight: 300;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .upload-area {
+      border: 2px dashed #dadce0;
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 25px;
+      position: relative;
+      background: #f8f9fa;
+    }
+
+    .upload-area:hover, .upload-area.active {
+      border-color: #4285f4;
+      background: #f0f7ff;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      color: #619eff;
+      margin-bottom: 15px;
+      transition: transform 0.3s ease;
+    }
+
+    .upload-area:hover .upload-icon {
+      transform: scale(1.1);
+    }
+
+    .upload-text {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .browse-text {
+      color: #619eff;
+      font-weight: 500;
+    }
+
+    .file-info {
+      display: none;
+      margin-top: 15px;
+      padding: 12px;
+      background: #e8f0fe;
+      border-radius: 8px;
+      text-align: left;
+    }
+
+    .file-name {
+      font-weight: 500;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+    }
+
+    .file-name i {
+      margin-right: 8px;
+      color: #4285f4;
+    }
+
+    .file-size {
+      font-size: 13px;
+      color: #5f6368;
+    }
+
+    .upload-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #86b4ff 0%, #505f54 100%);
+      color: white;
+      border: solid rgba(237, 237, 255, 0.034) 1.2px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    }
+
+    .upload-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(66, 133, 244, 0.4);
+    }
+
+    .upload-btn:active {
+      transform: translateY(0);
+    }
+
+    .upload-btn i {
+      margin-right: 8px;
+    }
+
+    .response {
+      margin-top: 25px;
+      padding: 20px;
+      border-radius: 12px;
+      background: #f8f9fa;
+      display: none;
+      animation: slideDown 0.5s ease-out;
+      border-left: 4px solid #4285f4;
+    }
+
+    .response.success {
+      border-left-color: #34a853;
+      background: #f0f8f0;
+    }
+
+    .response.error {
+      border-left-color: #ea4335;
+      background: #fef0f0;
+    }
+
+    .response-title {
+      font-weight: 500;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    .response-title i {
+      margin-right: 8px;
+    }
+
+    .response-details {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .preview-text {
+      margin-top: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #5f6368;
+      border: 1px solid #e8e8e8;
+      word-wrap: break-word;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(66, 133, 244, 0.2);
+      border-left: 4px solid #4285f4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    .loading-text {
+      font-size: 14px;
+      color: #5f6368;
+    }
+
+    .download-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #ea4335 0%, #fbbc05 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+      margin-top: 15px;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(234, 67, 53, 0.4);
+    }
+
+    .download-btn:active {
+      transform: translateY(0);
+    }
+
+    .download-btn i {
+      margin-right: 8px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #5f6368;
+      border-top: 1px solid #e8e8e8;
+      background: #f8f9fa;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        max-width: 100%;
+      }
+      
+      .content {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-users"></i>
+      </div>
+      <h1>Stakeholder Identification System</h1>
+      <p class="subtitle">Upload your PDF for intelligent analysis</p>
+    </div>
+    
+    <div class="content">
+      <div class="upload-area" id="uploadArea">
+        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+        <p class="upload-text">Drag & drop your PDF here</p>
+        <p>or <span class="browse-text">browse files</span></p>
+        
+        <div class="file-info" id="fileInfo">
+          <div class="file-name">
+            <i class="fas fa-file-pdf"></i>
+            <span id="fileName">document.pdf</span>
+          </div>
+          <div class="file-size" id="fileSize">0 KB</div>
+        </div>
+      </div>
+      
+      <input type="file" id="pdfFile" accept=".pdf" hidden>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p class="loading-text">Processing your document...</p>
+      </div>
+      
+      <button class="upload-btn" id="uploadBtn">
+        <i class="fas fa-upload"></i> Analyze PDF
+      </button>
+      
+      <div class="response" id="responseBox">
+        <div class="response-title">
+          <i class="fas fa-check-circle"></i>
+          <span>Analysis Complete</span>
+        </div>
+        <div class="response-details" id="responseDetails">
+          <!-- Response content will be inserted here -->
+        </div>
+      </div>
+
+      <button class="download-btn" id="downloadBtn" style="display: none;">
+        <i class="fas fa-download"></i> Download PDF
+      </button>
+    </div>
+    
+    <div class="footer">
+      <p>@SHIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const uploadArea = document.getElementById('uploadArea');
@@ -427,3 +808,6 @@
     }
   });
 </script>
+</body>
+</html>
+
