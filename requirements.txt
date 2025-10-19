@@ -6,4 +6,4 @@ beautifulsoup4
 langchain-google-genai
 python-dotenv
 uvicorn==0.35.0
-langgraph'
+langgraph
