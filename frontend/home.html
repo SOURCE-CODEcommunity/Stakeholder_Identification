@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SHIS</title>
+  <title>SIS</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* Your existing CSS remains the same */
@@ -374,442 +374,333 @@
     </div>
     
     <div class="footer">
-      <p>@SHIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
+      <p>@SIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('pdfFile');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const responseBox = document.getElementById('responseBox');
-    const responseDetails = document.getElementById('responseDetails');
-    const loading = document.getElementById('loading');
-    const downloadBtn = document.getElementById('downloadBtn');
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const uploadArea = document.getElementById('uploadArea');
+      const fileInput = document.getElementById('pdfFile');
+      const fileInfo = document.getElementById('fileInfo');
+      const fileName = document.getElementById('fileName');
+      const fileSize = document.getElementById('fileSize');
+      const uploadBtn = document.getElementById('uploadBtn');
+      const responseBox = document.getElementById('responseBox');
+      const responseDetails = document.getElementById('responseDetails');
+      const loading = document.getElementById('loading');
+      const downloadBtn = document.getElementById('downloadBtn');
 
-    // Retry configuration
-    const RETRY_CONFIG = {
-      maxRetries: 3,
-      initialDelay: 1000, // 1 second
-      maxDelay: 10000, // 10 seconds
-      backoffMultiplier: 2
-    };
+      // Click on upload area to trigger file input
+      uploadArea.addEventListener('click', () => {
+        fileInput.click();
+      });
 
-    let currentRetryCount = 0;
-    let currentFile = null;
+      // Drag and drop functionality
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('active');
+      });
 
-    // Click on upload area to trigger file input
-    uploadArea.addEventListener('click', () => {
-      fileInput.click();
-    });
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('active');
+      });
 
-    // Drag and drop functionality
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('active');
-    });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('active');
+        
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          handleFileSelection();
+        }
+      });
 
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('active');
-    });
+      // File input change event
+      fileInput.addEventListener('change', handleFileSelection);
 
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('active');
-      
-      if (e.dataTransfer.files.length) {
-        fileInput.files = e.dataTransfer.files;
-        handleFileSelection();
+      function handleFileSelection() {
+        if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          
+          // Validate file type
+          if (file.type !== 'application/pdf') {
+            showResponse('Please select a valid PDF file', false);
+            resetFileInput();
+            return;
+          }
+          
+          // Validate file size (10MB limit)
+          if (file.size > 10 * 1024 * 1024) {
+            showResponse('File size must be less than 10MB', false);
+            resetFileInput();
+            return;
+          }
+          
+          // Display file info
+          fileName.textContent = file.name;
+          fileSize.textContent = formatFileSize(file.size);
+          fileInfo.style.display = 'block';
+          
+          // Enable upload button
+          uploadBtn.disabled = false;
+        }
       }
-    });
 
-    // File input change event
-    fileInput.addEventListener('change', handleFileSelection);
+      // Upload button click event
+      uploadBtn.addEventListener('click', handleUpload);
 
-    function handleFileSelection() {
-      if (fileInput.files.length > 0) {
+      function handleUpload() {
+        if (!fileInput.files.length) {
+          showResponse('Please select a PDF file first', false);
+          return;
+        }
+
         const file = fileInput.files[0];
         
-        // Validate file type
-        if (file.type !== 'application/pdf') {
-          showResponse('Please select a valid PDF file', false);
-          resetFileInput();
-          return;
-        }
+        // Show loading state
+        loading.style.display = 'block';
+        responseBox.style.display = 'none';
+        downloadBtn.style.display = 'none';
+        uploadBtn.disabled = true;
         
-        // Validate file size (10MB limit)
-        if (file.size > 10 * 1024 * 1024) {
-          showResponse('File size must be less than 10MB', false);
-          resetFileInput();
-          return;
-        }
-        
-        // Display file info
-        fileName.textContent = file.name;
-        fileSize.textContent = formatFileSize(file.size);
-        fileInfo.style.display = 'block';
-        
-        // Enable upload button
-        uploadBtn.disabled = false;
-        currentFile = file;
-      }
-    }
-
-    // Upload button click event
-    uploadBtn.addEventListener('click', handleUpload);
-
-    async function handleUpload() {
-      if (!fileInput.files.length) {
-        showResponse('Please select a PDF file first', false);
-        return;
-      }
-
-      const file = fileInput.files[0];
-      currentFile = file;
-      currentRetryCount = 0;
-      
-      // Show loading state
-      loading.style.display = 'block';
-      responseBox.style.display = 'none';
-      downloadBtn.style.display = 'none';
-      uploadBtn.disabled = true;
-      
-      try {
-        await uploadWithRetry(file);
-      } catch (error) {
-        console.error('Final upload error:', error);
-        showResponse(getUserFriendlyErrorMessage(error), false);
-      } finally {
-        loading.style.display = 'none';
-      }
-    }
-
-    async function uploadWithRetry(file, delay = RETRY_CONFIG.initialDelay) {
-      try {
+        // API call
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileInput.files[0]);
         
-        const response = await fetchWithTimeout('https://stakeholder-identification.onrender.com/upload', {
+        fetch('https://stakeholder-identification.onrender.com/upload', {
           method: 'POST',
-          body: formData,
-          timeout: 30000 // 30 seconds timeout
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('Upload failed');
+          return response.json();
+        })
+        .then(data => {
+          console.log('API Response:', data);
+          showSuccessResponse(data);
+        })
+        .catch(error => {
+          console.error('Upload error:', error);
+          showResponse('Error: ' + error.message, false);
+        })
+        .finally(() => {
+          loading.style.display = 'none';
         });
-
-        if (!response.ok) {
-          throw new Error(`Server responded with status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('API Response:', data);
-        showSuccessResponse(data);
-        currentRetryCount = 0; // Reset retry count on success
-        
-      } catch (error) {
-        currentRetryCount++;
-        
-        if (currentRetryCount < RETRY_CONFIG.maxRetries) {
-          const nextDelay = Math.min(delay * RETRY_CONFIG.backoffMultiplier, RETRY_CONFIG.maxDelay);
-          
-          // Show retry message
-          showRetryMessage(currentRetryCount, nextDelay, error);
-          
-          // Wait and retry
-          await new Promise(resolve => setTimeout(resolve, nextDelay));
-          return uploadWithRetry(file, nextDelay);
-        } else {
-          throw error; // Max retries reached
-        }
       }
-    }
 
-    function fetchWithTimeout(url, options = {}) {
-      const { timeout = 3600000, ...fetchOptions } = options;
-      
-      return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          reject(new Error('Request timeout - server is taking too long to respond'));
-        }, timeout);
-
-        fetch(url, fetchOptions)
-          .then(response => {
-            clearTimeout(timer);
-            resolve(response);
-          })
-          .catch(error => {
-            clearTimeout(timer);
-            reject(error);
-          });
-      });
-    }
-
-    function showRetryMessage(retryCount, delay, error) {
-      const retryMessage = `
-        <div style="text-align: center; padding: 10px;">
-          <i class="fas fa-sync-alt" style="color: #fbbc05; font-size: 24px; margin-bottom: 10px;"></i>
-          <p><strong>Connection Issue</strong></p>
-          <p>${getUserFriendlyErrorMessage(error)}</p>
-          <p>Retrying... (${retryCount}/${RETRY_CONFIG.maxRetries})</p>
-          <p style="font-size: 12px; color: #666;">Next attempt in ${delay/1000} seconds</p>
-        </div>
-      `;
-      
-      responseDetails.innerHTML = retryMessage;
-      responseBox.className = 'response';
-      responseBox.style.display = 'block';
-    }
-
-    function getUserFriendlyErrorMessage(error) {
-      const errorMessage = error.message.toLowerCase();
-      
-      if (errorMessage.includes('failed to fetch') || errorMessage.includes('network error')) {
-        return 'Unable to connect to the server. Please check your internet connection.';
-      } else if (errorMessage.includes('timeout')) {
-        return 'The server is taking too long to respond. The service might be experiencing high load.';
-      } else if (errorMessage.includes('404')) {
-        return 'The upload service is currently unavailable. Please try again later.';
-      } else if (errorMessage.includes('500')) {
-        return 'Server error occurred. Our team has been notified.';
-      } else if (errorMessage.includes('413')) {
-        return 'File is too large. Please ensure your PDF is under 10MB.';
-      } else if (errorMessage.includes('429')) {
-        return 'Too many requests. Please wait a moment and try again.';
-      } else {
-        return `An unexpected error occurred: ${error.message}`;
-      }
-    }
-
-    function showSuccessResponse(data) {
-      const hasStakeholderDetails = data.stakeholder_details && 
-                                   data.stakeholder_details !== null && 
-                                   data.stakeholder_details !== 'null';
-      
-      responseDetails.innerHTML = `
-        <div style="text-align: center; margin-bottom: 15px;">
-          <i class="fas fa-check-circle" style="color: #34a853; font-size: 48px;"></i>
-        </div>
-        <p><strong>Filename:</strong> ${data.filename}</p>
-        <p><strong>Upload Time:</strong> ${new Date(data.metadata.uploadtime).toLocaleString()}</p>
-        <p><strong>Word Count:</strong> ${data.metadata.wordcount}</p>
-        <p><strong>Status:</strong> <span style="color: #34a853;">${data.status}</span></p>
-        <div class="preview-text">
-          <strong>Preview:</strong><br>${data.preview}...
-        </div>
-        ${hasStakeholderDetails ? `
-          <div class="preview-text" style="margin-top: 10px;">
-            <strong>Stakeholder Details:</strong><br>
-            ${typeof data.stakeholder_details === 'string' ?              
-              `${data.stakeholder_details.length > 500 ? 
-                  data.stakeholder_details.substring(0, 500) + '...' : 
-                  data.stakeholder_details}` : 
-              
-              `${JSON.stringify(data.stakeholder_details, null, 2).length > 500 ? 
-                  JSON.stringify(data.stakeholder_details, null, 2).substring(0, 500) + '...' : 
-                  JSON.stringify(data.stakeholder_details, null, 2)}`}
+      function showSuccessResponse(data) {
+        const hasStakeholderDetails = data.stakeholder_details && 
+                                     data.stakeholder_details !== null && 
+                                     data.stakeholder_details !== 'null';
+        
+        responseDetails.innerHTML = `
+          <p><strong>Filename:</strong> ${data.filename}</p>
+          <p><strong>Upload Time:</strong> ${new Date(data.metadata.uploadtime).toLocaleString()}</p>
+          <p><strong>Word Count:</strong> ${data.metadata.wordcount}</p>
+          <p><strong>Status:</strong> <span style="color: #34a853;">${data.status}</span></p>
+          <div class="preview-text">
+            <strong>Preview:</strong><br>${data.preview}...
           </div>
-          <p><strong>Stakeholder Details Length:</strong> ${data.stakeholder_details_length}</p>
-        ` : ''}
-      `;
-      
-      responseBox.className = 'response success';
-      responseBox.style.display = 'block';
-      
-      // Show download button with the actual API data
-      showDownloadButton(data);
-      
-      // Reset for next upload (but keep download button visible)
-      resetFileInputForNextUpload();
-    }
-
-    function showResponse(message, isSuccess) {
-      const icon = isSuccess ? 'fa-check-circle' : 'fa-exclamation-triangle';
-      const iconColor = isSuccess ? '#34a853' : '#ea4335';
-      
-      responseDetails.innerHTML = `
-        <div style="text-align: center; margin-bottom: 15px;">
-          <i class="fas ${icon}" style="color: ${iconColor}; font-size: 48px;"></i>
-        </div>
-        <p style="text-align: center;">${message}</p>
-      `;
-      responseBox.className = `response ${isSuccess ? 'success' : 'error'}`;
-      responseBox.style.display = 'block';
-      
-      if (!isSuccess) {
-        resetFileInput();
-      }
-    }
-
-    function resetFileInput() {
-      fileInput.value = '';
-      fileInfo.style.display = 'none';
-      uploadBtn.disabled = true;
-      downloadBtn.style.display = 'none';
-      currentFile = null;
-    }
-
-    function resetFileInputForNextUpload() {
-      fileInput.value = '';
-      fileInfo.style.display = 'none';
-      uploadBtn.disabled = true;
-      // Don't hide download button here - keep it available for the current result
-    }
-
-    function formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Enhanced PDF creation with proper page breaks and text positioning
-    function downloadPDF(data) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      
-      // Page dimensions
-      const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
-      const margin = 20;
-      const lineHeight = 7;
-      const maxWidth = pageWidth - (margin * 2);
-      
-      let yPosition = margin;
-      
-      // Function to add new page if needed
-      const checkPageBreak = (requiredSpace = lineHeight) => {
-        if (yPosition + requiredSpace > pageHeight - margin) {
-          doc.addPage();
-          yPosition = margin;
-          return true;
-        }
-        return false;
-      };
-      
-      // Add title
-      doc.setFontSize(20);
-      doc.setTextColor(66, 133, 244);
-      doc.text('STAKEHOLDER ANALYSIS REPORT', margin, yPosition);
-      yPosition += 25;
-      
-      // Add file info
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      
-      const fileInfo = [
-        `Filename: ${data.filename}`,
-        `Upload Time: ${new Date(data.metadata.uploadtime).toLocaleString()}`,
-        `Word Count: ${data.metadata.wordcount}`,
-        `Status: ${data.status}`
-      ];
-      
-      fileInfo.forEach(info => {
-        checkPageBreak();
-        doc.text(info, margin, yPosition);
-        yPosition += lineHeight + 2;
-      });
-      
-      yPosition += 10;
-      
-      // Add content preview section
-      checkPageBreak(15);
-      doc.setFont(undefined, 'bold');
-      doc.text('CONTENT PREVIEW:', margin, yPosition);
-      yPosition += lineHeight + 5;
-      
-      // Use cleaned_text if available, otherwise use preview
-      const content = data.cleaned_text || data.preview || 'No content available';
-      doc.setFont(undefined, 'normal');
-      
-      const contentLines = doc.splitTextToSize(content, maxWidth);
-      
-      for (let i = 0; i < contentLines.length; i++) {
-        checkPageBreak();
-        doc.text(contentLines[i], margin, yPosition);
-        yPosition += lineHeight;
+          ${hasStakeholderDetails ? `
+            <div class="preview-text" style="margin-top: 10px;">
+              <strong>Stakeholder Details:</strong><br>
+              ${typeof data.stakeholder_details === 'string' ?              
+                `${data.stakeholder_details.length > 500 ? 
+                    data.stakeholder_details.substring(0, 500) + '...' : 
+                    data.stakeholder_details}` : 
+                
+                `${JSON.stringify(data.stakeholder_details, null, 2).length > 500 ? 
+                    JSON.stringify(data.stakeholder_details, null, 2).substring(0, 500) + '...' : 
+                    JSON.stringify(data.stakeholder_details, null, 2)}`}
+            </div>
+            <p><strong>Stakeholder Details Length:</strong> ${data.stakeholder_details_length}</p>
+          ` : ''}
+        `;
         
-        // Add some spacing after every 10 lines for readability
-        if (i > 0 && i % 10 === 0) {
-          yPosition += 5;
+        responseBox.className = 'response success';
+        responseBox.style.display = 'block';
+        
+        // Show download button with the actual API data
+        showDownloadButton(data);
+        
+        // Reset for next upload (but keep download button visible)
+        resetFileInputForNextUpload();
+      }
+
+      function showResponse(message, isSuccess) {
+        responseDetails.innerHTML = `<p>${message}</p>`;
+        responseBox.className = `response ${isSuccess ? 'success' : 'error'}`;
+        responseBox.style.display = 'block';
+        
+        if (!isSuccess) {
+          resetFileInput();
         }
       }
-      
-      yPosition += 10;
-      
-      // Add stakeholder details if available
-      const hasStakeholderDetails = data.stakeholder_details && 
-                                   data.stakeholder_details !== null && 
-                                   data.stakeholder_details !== 'null';
-      
-      if (hasStakeholderDetails) {
+
+      function resetFileInput() {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadBtn.disabled = true;
+        downloadBtn.style.display = 'none';
+      }
+
+      function resetFileInputForNextUpload() {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadBtn.disabled = true;
+        // Don't hide download button here - keep it available for the current result
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+
+      // Enhanced PDF creation with proper page breaks and text positioning
+      function downloadPDF(data) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Page dimensions
+        const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
+        const margin = 20;
+        const lineHeight = 7;
+        const maxWidth = pageWidth - (margin * 2);
+        
+        let yPosition = margin;
+        
+        // Function to add new page if needed
+        const checkPageBreak = (requiredSpace = lineHeight) => {
+          if (yPosition + requiredSpace > pageHeight - margin) {
+            doc.addPage();
+            yPosition = margin;
+            return true;
+          }
+          return false;
+        };
+        
+        // Add title
+        doc.setFontSize(20);
+        doc.setTextColor(66, 133, 244);
+        doc.text('STAKEHOLDER ANALYSIS REPORT', margin, yPosition);
+        yPosition += 25;
+        
+        // Add file info
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        const fileInfo = [
+          `Filename: ${data.filename}`,
+          `Upload Time: ${new Date(data.metadata.uploadtime).toLocaleString()}`,
+          `Word Count: ${data.metadata.wordcount}`,
+          `Status: ${data.status}`
+        ];
+        
+        fileInfo.forEach(info => {
+          checkPageBreak();
+          doc.text(info, margin, yPosition);
+          yPosition += lineHeight + 2;
+        });
+        
+        yPosition += 10;
+        
+        // Add content preview section
         checkPageBreak(15);
         doc.setFont(undefined, 'bold');
-        doc.text('STAKEHOLDER DETAILS:', margin, yPosition);
+        doc.text('CONTENT PREVIEW:', margin, yPosition);
         yPosition += lineHeight + 5;
         
+        // Use cleaned_text if available, otherwise use preview
+        const content = data.cleaned_text || data.preview || 'No content available';
         doc.setFont(undefined, 'normal');
-        const stakeholderText = typeof data.stakeholder_details === 'string' ? 
-          data.stakeholder_details : 
-          JSON.stringify(data.stakeholder_details, null, 2);
-          
-        const stakeholderLines = doc.splitTextToSize(stakeholderText, maxWidth);
         
-        for (let i = 0; i < stakeholderLines.length; i++) {
+        const contentLines = doc.splitTextToSize(content, maxWidth);
+        
+        for (let i = 0; i < contentLines.length; i++) {
           checkPageBreak();
-          doc.text(stakeholderLines[i], margin, yPosition);
+          doc.text(contentLines[i], margin, yPosition);
           yPosition += lineHeight;
+          
+          // Add some spacing after every 10 lines for readability
+          if (i > 0 && i % 10 === 0) {
+            yPosition += 5;
+          }
         }
+        
+        yPosition += 10;
+        
+        // Add stakeholder details if available
+        const hasStakeholderDetails = data.stakeholder_details && 
+                                     data.stakeholder_details !== null && 
+                                     data.stakeholder_details !== 'null';
+        
+        if (hasStakeholderDetails) {
+          checkPageBreak(15);
+          doc.setFont(undefined, 'bold');
+          doc.text('STAKEHOLDER DETAILS:', margin, yPosition);
+          yPosition += lineHeight + 5;
+          
+          doc.setFont(undefined, 'normal');
+          const stakeholderText = typeof data.stakeholder_details === 'string' ? 
+            data.stakeholder_details : 
+            JSON.stringify(data.stakeholder_details, null, 2);
+            
+          const stakeholderLines = doc.splitTextToSize(stakeholderText, maxWidth);
+          
+          for (let i = 0; i < stakeholderLines.length; i++) {
+            checkPageBreak();
+            doc.text(stakeholderLines[i], margin, yPosition);
+            yPosition += lineHeight;
+          }
+        }
+        
+        // Add footer on the last page
+        const addFooter = () => {
+          const footerY = pageHeight - 15;
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Report generated on: ${new Date().toLocaleString()}`, margin, footerY);
+          doc.text('Stakeholder Identification System (SIS)', pageWidth - margin, footerY, { align: 'right' });
+        };
+        
+        // Add footer to all pages
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          addFooter();
+        }
+        
+        // Save the PDF
+        doc.save(`stakeholder_analysis_${data.filename.replace('.pdf', '')}.pdf`);
       }
-      
-      // Add footer on the last page
-      const addFooter = () => {
-        const footerY = pageHeight - 15;
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Report generated on: ${new Date().toLocaleString()}`, margin, footerY);
-        doc.text('Stakeholder Identification System (SIS)', pageWidth - margin, footerY, { align: 'right' });
-      };
-      
-      // Add footer to all pages
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        addFooter();
-      }
-      
-      // Save the PDF
-      doc.save(`stakeholder_analysis_${data.filename.replace('.pdf', '')}.pdf`);
-    }
 
-    // Function to show download button in response
-    function showDownloadButton(data) {
-      downloadBtn.style.display = 'flex';
-      
-      // Update button click handler
-      downloadBtn.onclick = () => {
-        downloadPDF(data);
+      // Function to show download button in response
+      function showDownloadButton(data) {
+        downloadBtn.style.display = 'flex';
         
-        // Add visual feedback
-        const originalText = downloadBtn.innerHTML;
-        downloadBtn.innerHTML = '<i class="fas fa-check"></i> Download Complete!';
-        downloadBtn.style.background = 'linear-gradient(135deg, #34a853 0%, #0f9d58 100%)';
-        
-        // Reset button after 2 seconds
-        setTimeout(() => {
-          downloadBtn.innerHTML = originalText;
-          downloadBtn.style.background = 'linear-gradient(135deg, #ea4335 0%, #fbbc05 100%)';
-        }, 2000);
-      };
-    }
-  });
-</script>
+        // Update button click handler
+        downloadBtn.onclick = () => {
+          downloadPDF(data);
+          
+          // Add visual feedback
+          const originalText = downloadBtn.innerHTML;
+          downloadBtn.innerHTML = '<i class="fas fa-check"></i> Download Complete!';
+          downloadBtn.style.background = 'linear-gradient(135deg, #34a853 0%, #0f9d58 100%)';
+          
+          // Reset button after 2 seconds
+          setTimeout(() => {
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.style.background = 'linear-gradient(135deg, #ea4335 0%, #fbbc05 100%)';
+          }, 2000);
+        };
+      }
+    });
+  </script>
 </body>
 </html>
-
-
-
