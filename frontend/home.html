@@ -529,7 +529,7 @@
     }
 
     function fetchWithTimeout(url, options = {}) {
-      const { timeout = 180000, ...fetchOptions } = options;
+      const { timeout = 3600000, ...fetchOptions } = options;
       
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
@@ -810,5 +810,6 @@
 </script>
 </body>
 </html>
+
 
 
