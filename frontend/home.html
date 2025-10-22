@@ -321,6 +321,40 @@
       }
     }
   </style>
+  <style>
+      /* Floating Action Button (FAB) for download link */
+      #downloadLinkWrap {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 1200;
+        display: block; /* script will toggle visibility */
+        pointer-events: none; /* allow FAB to be controlled by inner element */
+      }
+      #downloadFab {
+        pointer-events: auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ea4335 0%, #fbbc05 100%);
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        font-size: 20px;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      @media (max-width: 420px) {
+        #downloadFab { width: 48px; height: 48px; font-size: 18px; right: 12px; bottom: 12px; }
+      }
+    </style>
+    
 </head>
 <body>
   <div class="container">
@@ -373,12 +407,49 @@
       </button>
     </div>
     
+    
     <div class="footer">
       <p>@SIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
     </div>
   </div>
 
+  <p id="downloadLinkWrap" style="display: none;">
+    <a
+      id="downloadFab"
+      href="#downloadBtn"
+      role="button"
+      aria-label="Go to download"
+      title="Go to download"
+      onclick="document.getElementById('downloadBtn').scrollIntoView({behavior:'smooth', block:'center'}); return false;">
+      <i class="fas fa-download"></i>
+    </a>
+  </p>
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    (function(){
+      const dlBtn = document.getElementById('downloadBtn');
+      const linkWrap = document.getElementById('downloadLinkWrap');
+      if (!dlBtn || !linkWrap) return;
+
+      const updateVisibility = () => {
+        const st = window.getComputedStyle(dlBtn);
+        const visible = st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity) !== 0;
+        linkWrap.style.display = visible ? 'block' : 'none';
+      };
+
+      // initial check
+      updateVisibility();
+
+      // observe inline style/class changes on the download button
+      const mo = new MutationObserver(updateVisibility);
+      mo.observe(dlBtn, { attributes: true, attributeFilter: ['style', 'class'] });
+
+      // also update when the window finishes loading or on any click (cover JS-driven visibility changes)
+      window.addEventListener('load', updateVisibility);
+      document.addEventListener('click', updateVisibility);
+    })();
+  </script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const uploadArea = document.getElementById('uploadArea');
@@ -506,14 +577,15 @@
           ${hasStakeholderDetails ? `
             <div class="preview-text" style="margin-top: 10px;">
               <strong>Stakeholder Details:</strong><br>
-              ${typeof data.stakeholder_details === 'string' ?              
+              ${typeof data.stakeholder_details === 'string' ?  
+              //if yes perform this            
                 `${data.stakeholder_details.length > 500 ? 
                     data.stakeholder_details.substring(0, 500) + '...' : 
                     data.stakeholder_details}` : 
-                
-                `${JSON.stringify(data.stakeholder_details, null, 2).length > 500 ? 
-                    JSON.stringify(data.stakeholder_details, null, 2).substring(0, 500) + '...' : 
-                    JSON.stringify(data.stakeholder_details, null, 2)}`}
+                // if no perform this
+                `${formatText(data.stakeholder_details).length > 1040 ? 
+                    formatText(data.stakeholder_details) + '...' : 
+                    formatText(data.stakeholder_details)}`}
             </div>
             <p><strong>Stakeholder Details Length:</strong> ${data.stakeholder_details_length}</p>
           ` : ''}
@@ -527,6 +599,100 @@
         
         // Reset for next upload (but keep download button visible)
         resetFileInputForNextUpload();
+      }
+
+      function formatText(data) {
+        const escape = (s) => {
+          if (s === null || s === undefined) return '';
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        const ensureArray = (v) => (Array.isArray(v) ? v : (v == null ? [] : [v]));
+        const items = Array.isArray(data) ? data : ensureArray(data);
+        let html = '';
+
+        items.forEach((item, idx) => {
+          html += `<div class="search-item" style="margin-bottom:18px;padding:12px;border-radius:8px;background:#fff;border:1px solid #eee;">`;
+
+          // Title + link
+          if (item.title) {
+            const link = item.link ? ` href="${escape(item.link)}" target="_blank" rel="noopener noreferrer"` : '';
+            html += `<h3 style="margin:0 0 6px 0;font-size:16px;"><a${link} style="color:#1a73e8;text-decoration:none;">${escape(item.title)}</a></h3>`;
+          }
+
+          // Snippet
+          if (item.snippet) {
+            html += `<p style="margin:0 0 8px 0;color:#444;font-size:13px;">${escape(item.snippet)}</p>`;
+          }
+
+          // Emails
+          if (item.emails && item.emails.length) {
+            const emails = item.emails.map(e => `<a href="mailto:${escape(e)}" style="color:#1a73e8">${escape(e)}</a>`).join(', ');
+            html += `<p style="margin:0 0 6px 0"><strong>Emails:</strong> ${emails}</p>`;
+          }
+
+          // Phone links
+          if (item.phone_links && item.phone_links.length) {
+            const phones = item.phone_links.map(p => `<a href="${escape(p)}" style="color:#1a73e8">${escape(p)}</a>`).join(', ');
+            html += `<p style="margin:0 0 6px 0"><strong>Phones:</strong> ${phones}</p>`;
+          }
+
+          // Social links (array or object)
+          if (item.social_links) {
+            if (Array.isArray(item.social_links) && item.social_links.length) {
+              const socials = item.social_links.map(s => `<a href="${escape(s)}" target="_blank" rel="noopener noreferrer" style="color:#1a73e8">${escape(s)}</a>`).join(' • ');
+              html += `<p style="margin:0 0 6px 0"><strong>Social:</strong> ${socials}</p>`;
+            } else if (typeof item.social_links === 'object' && Object.keys(item.social_links).length) {
+              const socials = Object.entries(item.social_links)
+                .map(([k, v]) => v ? `<a href="${escape(v)}" target="_blank" rel="noopener noreferrer" style="color:#1a73e8">${escape(k)}</a>` : `<span style="color:#666">${escape(k)}</span>`)
+                .join(' • ');
+              html += `<p style="margin:0 0 6px 0"><strong>Social:</strong> ${socials}</p>`;
+            }
+          }
+
+          // Stakeholder details
+          const sd = item.stakeholder_details || item.stakeholders || null;
+          const stakeholders = sd && sd.stakeholders ? sd.stakeholders : (Array.isArray(item.stakeholders) ? item.stakeholders : null);
+          if (stakeholders && stakeholders.length) {
+            html += `<div style="margin-top:8px;"><strong>Stakeholders:</strong><ul style="margin:6px 0 0 18px;padding:0;">`;
+            stakeholders.forEach((s) => {
+              const name = s.name || s.organization || '';
+              html += `<li style="margin-bottom:6px;">`;
+              html += `<div style="font-weight:600;color:#222">${escape(name)}</div>`;
+              const details = [];
+              if (s.organization) details.push(`<span style="color:#555">Org: ${escape(s.organization)}</span>`);
+              if (s.email) details.push(`<span style="color:#555">Email: <a href="mailto:${escape(s.email)}" style="color:#1a73e8">${escape(s.email)}</a></span>`);
+              if (s.phone) details.push(`<span style="color:#555">Phone: ${escape(s.phone)}</span>`);
+              if (s.other_info) details.push(`<div style="color:#666;font-size:13px;margin-top:4px;">${escape(s.other_info)}</div>`);
+              if (details.length) html += `<div style="margin-top:4px;">${details.join(' · ')}</div>`;
+              html += `</li>`;
+            });
+            html += `</ul></div>`;
+          }
+
+          // Fallback: raw stakeholder_details if it's a string or other
+          if (!stakeholders && item.stakeholder_details && typeof item.stakeholder_details === 'string') {
+            const preview = escape(item.stakeholder_details);
+            html += `<div style="margin-top:8px;"><strong>Stakeholder Details:</strong><div style="color:#555;font-size:13px;margin-top:4px;">${preview}</div></div>`;
+          }
+
+          // Extra keys: any other primitive string keys (safe default)
+          const known = new Set(['title','link','snippet','emails','social_links','phone_links','stakeholder_details','stakeholders']);
+          Object.keys(item).forEach((k) => {
+            if (!known.has(k) && typeof item[k] === 'string') {
+              html += `<p style="margin:6px 0 0 0"><strong>${escape(k)}:</strong> ${escape(item[k])}</p>`;
+            }
+          });
+
+          html += `</div>`; // end item
+        });
+
+        return html;
       }
 
       function showResponse(message, isSuccess) {
@@ -560,124 +726,290 @@
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
       }
-
-      // Enhanced PDF creation with proper page breaks and text positioning
+      // Enhanced PDF creation that renders stakeholder details as plain text (no HTML)
       function downloadPDF(data) {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // Page dimensions
-        const pageWidth = doc.internal.pageSize.width;
-        const pageHeight = doc.internal.pageSize.height;
-        const margin = 20;
-        const lineHeight = 7;
-        const maxWidth = pageWidth - (margin * 2);
-        
-        let yPosition = margin;
-        
-        // Function to add new page if needed
-        const checkPageBreak = (requiredSpace = lineHeight) => {
-          if (yPosition + requiredSpace > pageHeight - margin) {
-            doc.addPage();
-            yPosition = margin;
+        const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+        // Layout settings
+        const margin = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const contentWidth = pageWidth - margin * 2;
+        const lineHeight = 14;
+        const smallLineHeight = 12;
+        let y = margin;
+
+        // Helpers
+        const safe = (v) => (v === null || v === undefined ? '' : String(v));
+        const sanitizeFilename = (name) => safe(name).replace(/[\\\/:*?"<>|]/g, '') || 'report';
+        const split = (text, width) => doc.splitTextToSize(String(text || ''), width);
+
+        // Header & footer
+        const drawHeader = (title) => {
+          doc.setFillColor(240, 245, 255);
+          doc.rect(0, 0, pageWidth, 70, 'F');
+          doc.setFontSize(18);
+          doc.setTextColor(40, 90, 180);
+          doc.setFont(undefined, 'bold');
+          doc.text(title, pageWidth / 2, 34, { align: 'center', baseline: 'middle' });
+
+          // thin separator
+          doc.setDrawColor(200);
+          doc.setLineWidth(0.5);
+          doc.line(margin, 70, pageWidth - margin, 70);
+
+          y = 90;
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(20, 20, 20);
+          doc.setFontSize(11);
+        };
+
+        const drawFooter = () => {
+          const footerY = pageHeight - 30;
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(`Generated: ${new Date().toLocaleString()}`, margin, footerY);
+          doc.text('Stakeholder Identification System (SIS)', pageWidth - margin, footerY, { align: 'right' });
+        };
+
+        const newPage = () => {
+          doc.addPage();
+          y = margin;
+          drawHeader('STAKEHOLDER ANALYSIS REPORT');
+        };
+
+        const ensureSpace = (needed = lineHeight) => {
+          if (y + needed > pageHeight - margin - 30) { // reserve footer space
+            newPage();
             return true;
           }
           return false;
         };
-        
-        // Add title
-        doc.setFontSize(20);
-        doc.setTextColor(66, 133, 244);
-        doc.text('STAKEHOLDER ANALYSIS REPORT', margin, yPosition);
-        yPosition += 25;
-        
-        // Add file info
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        
-        const fileInfo = [
-          `Filename: ${data.filename}`,
-          `Upload Time: ${new Date(data.metadata.uploadtime).toLocaleString()}`,
-          `Word Count: ${data.metadata.wordcount}`,
-          `Status: ${data.status}`
-        ];
-        
-        fileInfo.forEach(info => {
-          checkPageBreak();
-          doc.text(info, margin, yPosition);
-          yPosition += lineHeight + 2;
-        });
-        
-        yPosition += 10;
-        
-        // Add content preview section
-        checkPageBreak(15);
-        doc.setFont(undefined, 'bold');
-        doc.text('CONTENT PREVIEW:', margin, yPosition);
-        yPosition += lineHeight + 5;
-        
-        // Use cleaned_text if available, otherwise use preview
-        const content = data.cleaned_text || data.preview || 'No content available';
-        doc.setFont(undefined, 'normal');
-        
-        const contentLines = doc.splitTextToSize(content, maxWidth);
-        
-        for (let i = 0; i < contentLines.length; i++) {
-          checkPageBreak();
-          doc.text(contentLines[i], margin, yPosition);
-          yPosition += lineHeight;
-          
-          // Add some spacing after every 10 lines for readability
-          if (i > 0 && i % 10 === 0) {
-            yPosition += 5;
-          }
-        }
-        
-        yPosition += 10;
-        
-        // Add stakeholder details if available
-        const hasStakeholderDetails = data.stakeholder_details && 
-                                     data.stakeholder_details !== null && 
-                                     data.stakeholder_details !== 'null';
-        
-        if (hasStakeholderDetails) {
-          checkPageBreak(15);
-          doc.setFont(undefined, 'bold');
-          doc.text('STAKEHOLDER DETAILS:', margin, yPosition);
-          yPosition += lineHeight + 5;
-          
-          doc.setFont(undefined, 'normal');
-          const stakeholderText = typeof data.stakeholder_details === 'string' ? 
-            data.stakeholder_details : 
-            JSON.stringify(data.stakeholder_details, null, 2);
-            
-          const stakeholderLines = doc.splitTextToSize(stakeholderText, maxWidth);
-          
-          for (let i = 0; i < stakeholderLines.length; i++) {
-            checkPageBreak();
-            doc.text(stakeholderLines[i], margin, yPosition);
-            yPosition += lineHeight;
-          }
-        }
-        
-        // Add footer on the last page
-        const addFooter = () => {
-          const footerY = pageHeight - 15;
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Report generated on: ${new Date().toLocaleString()}`, margin, footerY);
-          doc.text('Stakeholder Identification System (SIS)', pageWidth - margin, footerY, { align: 'right' });
+
+        const write = (text, opts = {}) => {
+          const indent = opts.indent || 0;
+          const size = opts.size || 11;
+          doc.setFontSize(size);
+          const wrapped = split(text, contentWidth - indent);
+          wrapped.forEach((line) => {
+            ensureSpace(lineHeight);
+            doc.text(line, margin + indent, y);
+            y += lineHeight;
+          });
         };
-        
+
+        const writeLabelValue = (label, value) => {
+          const labelWidth = 120;
+          const valueWidth = contentWidth - labelWidth - 10;
+          doc.setFontSize(11);
+          doc.setFont(undefined, 'bold');
+          const labelLines = split(label + ':', labelWidth);
+          const valueLines = split(value, valueWidth);
+          const maxLines = Math.max(labelLines.length, valueLines.length);
+          for (let i = 0; i < maxLines; i++) {
+            ensureSpace(lineHeight);
+            const lx = margin;
+            const vx = margin + labelWidth + 10;
+            if (labelLines[i]) {
+              doc.setFont(undefined, 'bold');
+              doc.text(labelLines[i], lx, y);
+            }
+            if (valueLines[i]) {
+              doc.setFont(undefined, 'normal');
+              doc.text(valueLines[i], vx, y);
+            }
+            y += smallLineHeight;
+          }
+          y += 6;
+        };
+
+        // Start document
+        drawHeader('STAKEHOLDER ANALYSIS REPORT');
+
+        // Metadata box
+        doc.setDrawColor(220);
+        doc.setFillColor(250, 250, 250);
+        const metaBoxHeightGuess = 70;
+        ensureSpace(metaBoxHeightGuess);
+        const metaX = margin;
+        const metaY = y;
+        const metaW = contentWidth;
+        // draw light box
+        doc.setDrawColor(220);
+        doc.setFillColor(249, 250, 252);
+        doc.rect(metaX, metaY - 6, metaW, 60, 'F');
+        y += 6;
+
+        // Metadata content (two-column style)
+        writeLabelValue('Filename', safe(data.filename || 'unknown'));
+        writeLabelValue('Upload Time', data.metadata && data.metadata.uploadtime ? new Date(data.metadata.uploadtime).toLocaleString() : 'N/A');
+        writeLabelValue('Word Count', data.metadata && data.metadata.wordcount != null ? String(data.metadata.wordcount) : 'N/A');
+        writeLabelValue('Status', safe(data.status || 'N/A'));
+
+        y += 4;
+
+        // Content preview section
+        ensureSpace(28);
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(30);
+        doc.text('CONTENT PREVIEW', margin, y);
+        y += 16;
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(40);
+
+        const content = safe(data.cleaned_text || data.preview || 'No content available');
+        const previewLines = split(content, contentWidth);
+        // show up to N lines with subtle box
+        const previewMaxLines = 40;
+        const previewToShow = previewLines.slice(0, previewMaxLines);
+        // draw light background for preview
+        ensureSpace(previewToShow.length * smallLineHeight + 16);
+        const previewBoxY = y - 6;
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(235);
+        doc.rect(margin, previewBoxY, contentWidth, previewToShow.length * smallLineHeight + 10, 'F');
+        previewToShow.forEach((line) => {
+          ensureSpace(smallLineHeight);
+          doc.text(line, margin + 6, y);
+          y += smallLineHeight;
+        });
+        if (previewLines.length > previewMaxLines) {
+          ensureSpace(smallLineHeight);
+          doc.setFont(undefined, 'italic');
+          doc.text('...preview truncated...', margin + 6, y);
+          doc.setFont(undefined, 'normal');
+          y += smallLineHeight;
+        }
+        y += 8;
+
+        // Stakeholder details section (plain, neat formatting)
+        const hasStakeholderDetails = data.stakeholder_details && data.stakeholder_details !== 'null';
+        if (hasStakeholderDetails) {
+          ensureSpace(20);
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(30);
+          doc.text('STAKEHOLDER DETAILS', margin, y);
+          y += 16;
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(11);
+          doc.setTextColor(40);
+
+          // Build plain text lines from the previously used builder logic but simplified
+          const buildLines = (details) => {
+            const lines = [];
+            const push = (txt = '', indent = 0) => {
+              if (!txt && txt !== 0) return;
+              const cleaned = String(txt).replace(/\r\n/g, '\n').trim();
+              if (!cleaned) return;
+              cleaned.split('\n').forEach((l) => lines.push({ text: l.trim(), indent }));
+            };
+
+            if (typeof details === 'string') {
+              cleaned = details;
+              cleaned.split('\n\n').forEach(p => p.split('\n').forEach(l => push(l)));
+              return lines;
+            }
+
+            if (Array.isArray(details)) {
+              details.forEach((item, i) => {
+                const header = item.title || item.name || item.organization || `Item ${i + 1}`;
+                push(`${i + 1}. ${header}`, 0);
+                if (item.snippet) push(item.snippet, 12);
+                if (item.link) push(`Link: ${item.link}`, 12);
+                if (item.emails && item.emails.length) push(`Emails: ${item.emails.join(', ')}`, 12);
+                if (item.phone_links && item.phone_links.length) push(`Phones: ${item.phone_links.join(', ')}`, 12);
+
+                const stakeholders = (item.stakeholder_details && item.stakeholder_details.stakeholders) || (Array.isArray(item.stakeholders) && item.stakeholders);
+                if (stakeholders && stakeholders.length) {
+                  push('Stakeholders:', 12);
+                  stakeholders.forEach((s, si) => {
+                    const name = s.name || s.organization || `Stakeholder ${si + 1}`;
+                    push(`- ${name}`, 18);
+                    const subt = [];
+                    if (s.organization) subt.push(`Org: ${s.organization}`);
+                    if (s.email) subt.push(`Email: ${s.email}`);
+                    if (s.phone) subt.push(`Phone: ${s.phone}`);
+                    if (subt.length) push(subt.join(' · '), 26);
+                    if (s.other_info) push(s.other_info, 26);
+                  });
+                }
+
+                // extra primitives
+                Object.keys(item).forEach(k => {
+                  if (['title','link','snippet','emails','social_links','phone_links','stakeholder_details','stakeholders'].indexOf(k) === -1 && typeof item[k] === 'string') {
+                    push(`${k}: ${item[k]}`, 12);
+                  }
+                });
+
+                push('', 0);
+              });
+              return lines;
+            }
+
+            if (typeof details === 'object') {
+              if (details.stakeholders && Array.isArray(details.stakeholders)) {
+                details.stakeholders.forEach((s, si) => {
+                  const name = s.name || s.organization || `Stakeholder ${si + 1}`;
+                  push(`- ${name}`, 8);
+                  const subt = [];
+                  if (s.organization) subt.push(`Org: ${s.organization}`);
+                  if (s.email) subt.push(`Email: ${s.email}`);
+                  if (s.phone) subt.push(`Phone: ${s.phone}`);
+                  if (subt.length) push(subt.join(' · '), 16);
+                  if (s.other_info) push(s.other_info, 16);
+                });
+                return lines;
+              }
+              // generic object
+              Object.entries(details).forEach(([k, v]) => {
+                if (typeof v === 'string') push(`${k}: ${v}`, 0);
+                else if (Array.isArray(v)) push(`${k}: ${v.join(', ')}`, 0);
+              });
+              return lines;
+            }
+
+            push(JSON.stringify(details), 0);
+            return lines;
+          };
+
+          const sdLines = buildLines(data.stakeholder_details);
+          sdLines.forEach(({ text, indent }) => {
+            const wrapped = split(text, contentWidth - indent);
+            wrapped.forEach((ln) => {
+              ensureSpace(smallLineHeight);
+              doc.text(ln, margin + indent, y);
+              y += smallLineHeight;
+            });
+          });
+
+          if (data.stakeholder_details_length != null) {
+            y += 6;
+            write(`Stakeholder Details Length: ${data.stakeholder_details_length}`, { size: 10 });
+          }
+        } else {
+          ensureSpace(20);
+          doc.setFontSize(11);
+          doc.setFont(undefined, 'italic');
+          doc.setTextColor(110);
+          write('No stakeholder details were extracted for this document.');
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(40);
+        }
+
         // Add footer to all pages
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
-          addFooter();
+          drawFooter();
         }
-        
-        // Save the PDF
-        doc.save(`stakeholder_analysis_${data.filename.replace('.pdf', '')}.pdf`);
+
+        // Save with sanitized filename
+        const filename = `stakeholder_analysis_${sanitizeFilename(safe(data.filename)).replace(/\s+/g, '_')}.pdf`;
+        doc.save(filename);
       }
 
       // Function to show download button in response
