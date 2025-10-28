@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS</title>
+  <title>IYI-CIS</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* Your existing CSS remains the same */
@@ -362,7 +362,7 @@
       <div class="logo">
         <i class="fas fa-users"></i>
       </div>
-      <h1>Stakeholder Identification System</h1>
+      <h1>IYI-Collaborators' Identification System</h1>
       <p class="subtitle">Upload your PDF for intelligent analysis</p>
     </div>
     
@@ -409,7 +409,7 @@
     
     
     <div class="footer">
-      <p>@SIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
+      <p>@IYI-CIS2025 • Secure & Private • AI-Powered Analysis • Supports PDF files up to 10MB</p>
     </div>
   </div>
 
@@ -572,7 +572,7 @@
           <p><strong>Word Count:</strong> ${data.metadata.wordcount}</p>
           <p><strong>Status:</strong> <span style="color: #34a853;">${data.status}</span></p>
           <div class="preview-text">
-            <strong>Preview:</strong><br>${data.preview}...
+            <!--<strong>Preview:</strong><br>${data.preview}...-->
           </div>
           ${hasStakeholderDetails ? `
             <div class="preview-text" style="margin-top: 10px;">
@@ -850,40 +850,40 @@
         y += 4;
 
         // Content preview section
-        ensureSpace(28);
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(30);
-        doc.text('CONTENT PREVIEW', margin, y);
-        y += 16;
-        doc.setFont(undefined, 'normal');
-        doc.setFontSize(11);
-        doc.setTextColor(40);
+        // ensureSpace(28);
+        // doc.setFontSize(12);
+        // doc.setFont(undefined, 'bold');
+        // doc.setTextColor(30);
+        // doc.text('CONTENT PREVIEW', margin, y);
+        // y += 16;
+        // doc.setFont(undefined, 'normal');
+        // doc.setFontSize(11);
+        // doc.setTextColor(40);
 
-        const content = safe(data.cleaned_text || data.preview || 'No content available');
-        const previewLines = split(content, contentWidth);
-        // show up to N lines with subtle box
-        const previewMaxLines = 40;
-        const previewToShow = previewLines.slice(0, previewMaxLines);
-        // draw light background for preview
-        ensureSpace(previewToShow.length * smallLineHeight + 16);
-        const previewBoxY = y - 6;
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(235);
-        doc.rect(margin, previewBoxY, contentWidth, previewToShow.length * smallLineHeight + 10, 'F');
-        previewToShow.forEach((line) => {
-          ensureSpace(smallLineHeight);
-          doc.text(line, margin + 6, y);
-          y += smallLineHeight;
-        });
-        if (previewLines.length > previewMaxLines) {
-          ensureSpace(smallLineHeight);
-          doc.setFont(undefined, 'italic');
-          doc.text('...preview truncated...', margin + 6, y);
-          doc.setFont(undefined, 'normal');
-          y += smallLineHeight;
-        }
-        y += 8;
+        // const content = safe(data.cleaned_text || data.preview || 'No content available');
+        // const previewLines = split(content, contentWidth);
+        // // show up to N lines with subtle box
+        // const previewMaxLines = 40;
+        // const previewToShow = previewLines.slice(0, previewMaxLines);
+        // // draw light background for preview
+        // ensureSpace(previewToShow.length * smallLineHeight + 16);
+        // const previewBoxY = y - 6;
+        // doc.setFillColor(255, 255, 255);
+        // doc.setDrawColor(235);
+        // doc.rect(margin, previewBoxY, contentWidth, previewToShow.length * smallLineHeight + 10, 'F');
+        // previewToShow.forEach((line) => {
+        //   ensureSpace(smallLineHeight);
+        //   doc.text(line, margin + 6, y);
+        //   y += smallLineHeight;
+        // });
+        // if (previewLines.length > previewMaxLines) {
+        //   ensureSpace(smallLineHeight);
+        //   doc.setFont(undefined, 'italic');
+        //   doc.text('...preview truncated...', margin + 6, y);
+        //   doc.setFont(undefined, 'normal');
+        //   y += smallLineHeight;
+        // }
+        // y += 8;
 
         // Stakeholder details section (plain, neat formatting)
         const hasStakeholderDetails = data.stakeholder_details && data.stakeholder_details !== 'null';
@@ -1036,4 +1036,5 @@
   </script>
 </body>
 </html>
+
 
